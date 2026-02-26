@@ -62,3 +62,6 @@ Ultimate-Chess-Pro/
 ## 📱 Responsiveness
 * Works on **desktop**, **tablet**, and **mobile browsers**
 * Board scales automatically based on screen size
+
+* Live demo
+* https://srishankar.neocities.org/chess/
