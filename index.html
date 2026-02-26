@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Chess Pro - Master Edition</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e2a38, #0f172a);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            min-height: 100vh;
+        }
+        h1 { margin: 15px 0 5px 0; font-weight: 600; letter-spacing: 1px; }
+        #info { 
+            margin-bottom: 15px; 
+            font-size: 1.2rem; 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 8px 25px; 
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, min(11vw, 70px));
+            grid-template-rows: repeat(8, min(11vw, 70px));
+            border: 8px solid #334155;
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: min(9vw, 50px);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .white { background: #e2e8f0; }
+        .black { background: #94a3b8; }
+
+        .whitePiece { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .blackPiece { color: #000000; }
+
+        .selected { background: #fbbf24 !important; }
+        .lastMove { background: #fef08a !important; opacity: 0.8; }
+        .inCheck { background: #ef4444 !important; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { box-shadow: inset 0 0 0px red; }
+            50% { box-shadow: inset 0 0 20px white; }
+            100% { box-shadow: inset 0 0 0px red; }
+        }
+
+        #promotion {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 20px;
+            display: none;
+            box-shadow: 0 0 100px rgba(0,0,0,0.9);
+            z-index: 1000;
+            border: 2px solid #38bdf8;
+        }
+        #promotion h3 { margin-top: 0; text-align: center; }
+        .promo-options { display: flex; gap: 15px; }
+        #promotion span { 
+            font-size: 60px; 
+            cursor: pointer; 
+            background: #334155; 
+            padding: 10px; 
+            border-radius: 10px;
+            transition: 0.2s;
+        }
+        #promotion span:hover { background: #475569; transform: translateY(-5px); }
+
+        /* RESULT OVERLAY */
+        #resultScreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(8px);
+        }
+
+        .resultCard {
+            background: #1e293b;
+            padding: 60px;
+            border-radius: 30px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .resultCard h2 { font-size: 48px; margin: 0; color: #38bdf8; }
+        .resultCard p { font-size: 20px; color: #94a3b8; margin: 20px 0 40px 0; }
+        .resultCard button {
+            padding: 16px 45px;
+            font-size: 20px;
+            border: none;
+            border-radius: 12px;
+            background: #38bdf8;
+            color: #0f172a;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .resultCard button:hover { background: #7dd3fc; transform: scale(1.05); }
+
+        .gameOver #board { pointer-events: none; filter: grayscale(0.5); }
+    </style>
+</head>
+<body>
+
+    <h1>Ultimate Chess Pro</h1>
+    <div id="info">White's Turn</div>
+    
+    <div id="board"></div>
+
+    <div id="promotion">
+        <h3>Choose Promotion</h3>
+        <div class="promo-options"></div>
+    </div>
+
+    <div id="resultScreen">
+        <div class="resultCard">
+            <h2 id="resultTitle">WHITE WINS!</h2>
+            <p id="resultText">Checkmate • Victory</p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+<script>
+    const boardDiv = document.getElementById("board");
+    const info = document.getElementById("info");
+    const promoDiv = document.getElementById("promotion");
+    const resultScreen = document.getElementById("resultScreen");
+
+    let currentTurn = "white";
+    let selected = null;
+    let hasMoved = {
+        whiteKing: false, blackKing: false,
+        whiteRookL: false, whiteRookR: false,
+        blackRookL: false, blackRookR: false
+    };
+
+    let board = [
+        ["♜","♞","♝","♛","♚","♝","♞","♜"],
+        ["♟","♟","♟","♟","♟","♟","♟","♟"],
+        ["","","","","","","",""],
+        ["","","","","","","",""],
+        ["","","","","","","",""],
+        ["","","","","","","",""],
+        ["♙","♙","♙","♙","♙","♙","♙","♙"],
+        ["♖","♘","♗","♕","♔","♗","♘","♖"]
+    ];
+
+    function isWhite(p){ return "♙♖♘♗♕♔".includes(p); }
+    function isBlack(p){ return "♟♜♞♝♛♚".includes(p); }
+
+    function draw() {
+        boardDiv.innerHTML = "";
+        let wCheck = isCheck("white");
+        let bCheck = isCheck("black");
+
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                let sq = document.createElement("div");
+                sq.className = "square " + ((r+c)%2 ? "black" : "white");
+                sq.dataset.r = r; sq.dataset.c = c;
+                
+                let piece = board[r][c];
+                sq.textContent = piece;
+                if(piece !== "") {
+                    sq.classList.add(isWhite(piece) ? "whitePiece" : "blackPiece");
+                    if(piece === "♔" && wCheck) sq.classList.add("inCheck");
+                    if(piece === "♚" && bCheck) sq.classList.add("inCheck");
+                }
+                if(selected && selected[0] == r && selected[1] == c) sq.classList.add("selected");
+                sq.onclick = clickSquare;
+                boardDiv.appendChild(sq);
+            }
+        }
+    }
+
+    function clickSquare(e) {
+        let r = parseInt(e.target.dataset.r);
+        let c = parseInt(e.target.dataset.c);
+
+        if (selected) {
+            let [fr, fc] = selected;
+            if (makeMove(fr, fc, r, c)) {
+                currentTurn = (currentTurn === "white") ? "black" : "white";
+                updateStatus();
+            }
+            selected = null;
+            draw();
+            return;
+        }
+
+        let p = board[r][c];
+        if (p !== "" && ((currentTurn === "white" && isWhite(p)) || (currentTurn === "black" && isBlack(p)))) {
+            selected = [r, c];
+            draw();
+        }
+    }
+
+    function makeMove(fr, fc, tr, tc) {
+        let piece = board[fr][fc];
+        
+        // --- Special Case: Castling (Swap Rook/King) ---
+        if ((piece === "♔" || piece === "♚") && Math.abs(tc - fc) === 2) {
+            if (!canCastle(fr, fc, tr, tc)) return false;
+            // Execute Castling
+            let rookCol = (tc > fc) ? 7 : 0;
+            let rookNewCol = (tc > fc) ? 5 : 3;
+            board[tr][tc] = piece;
+            board[fr][fc] = "";
+            board[tr][rookNewCol] = board[tr][rookCol];
+            board[tr][rookCol] = "";
+            updateMovementFlags(piece, fr, fc);
+            return true;
+        }
+
+        if (!isValidMove(piece, fr, fc, tr, tc)) return false;
+
+        let backupTarget = board[tr][tc];
+        board[tr][tc] = piece;
+        board[fr][fc] = "";
+
+        if (isCheck(currentTurn)) {
+            board[fr][fc] = piece;
+            board[tr][tc] = backupTarget;
+            return false;
+        }
+
+        updateMovementFlags(piece, fr, fc);
+
+        if ((piece === "♙" && tr === 0) || (piece === "♟" && tr === 7)) {
+            promotionMenu(tr, tc, piece);
+        }
+
+        return true;
+    }
+
+    function canCastle(fr, fc, tr, tc) {
+        let color = isWhite(board[fr][fc]) ? "white" : "black";
+        if (isCheck(color)) return false;
+        if (color === "white" && hasMoved.whiteKing) return false;
+        if (color === "black" && hasMoved.blackKing) return false;
+
+        let rookCol = (tc > fc) ? 7 : 0;
+        let rook = board[fr][rookCol];
+        if (rook === "" || (color === "white" && (rookCol === 7 ? hasMoved.whiteRookR : hasMoved.whiteRookL))) return false;
+        if (rook === "" || (color === "black" && (rookCol === 7 ? hasMoved.blackRookR : hasMoved.blackRookL))) return false;
+
+        // Path must be clear and not under attack
+        let step = (tc > fc) ? 1 : -1;
+        for (let c = fc + step; c !== rookCol; c += step) {
+            if (board[fr][c] !== "") return false;
+            // King cannot pass through squares under attack
+            if (Math.abs(c - fc) <= 2) {
+                let backup = board[fr][c];
+                board[fr][c] = board[fr][fc]; board[fr][fc] = "";
+                let unsafe = isCheck(color);
+                board[fr][fc] = board[fr][c]; board[fr][c] = backup;
+                if (unsafe) return false;
+            }
+        }
+        return true;
+    }
+
+    function updateMovementFlags(p, r, c) {
+        if (p === "♔") hasMoved.whiteKing = true;
+        if (p === "♚") hasMoved.blackKing = true;
+        if (p === "♖") { if (c === 0) hasMoved.whiteRookL = true; if (c === 7) hasMoved.whiteRookR = true; }
+        if (p === "♜") { if (c === 0) hasMoved.blackRookL = true; if (c === 7) hasMoved.blackRookR = true; }
+    }
+
+    function isValidMove(p, fr, fc, tr, tc) {
+        let rd = tr - fr, cd = tc - fc;
+        let target = board[tr][tc];
+        if (target !== "" && (isWhite(p) === isWhite(target))) return false;
+
+        const clear = () => {
+            let rs = Math.sign(rd), cs = Math.sign(cd);
+            let r = fr + rs, c = fc + cs;
+            while (r !== tr || c !== tc) { if (board[r][c] !== "") return false; r += rs; c += cs; }
+            return true;
+        };
+
+        switch (p) {
+            case "♙": return (cd === 0 && rd === -1 && target === "") || (cd === 0 && rd === -2 && fr === 6 && target === "" && board[5][fc] === "") || (Math.abs(cd) === 1 && rd === -1 && target !== "");
+            case "♟": return (cd === 0 && rd === 1 && target === "") || (cd === 0 && rd === 2 && fr === 1 && target === "" && board[2][fc] === "") || (Math.abs(cd) === 1 && rd === 1 && target !== "");
+            case "♖": case "♜": return (fr === tr || fc === tc) && clear();
+            case "♘": case "♞": return (Math.abs(rd) === 2 && Math.abs(cd) === 1) || (Math.abs(rd) === 1 && Math.abs(cd) === 2);
+            case "♗": case "♝": return Math.abs(rd) === Math.abs(cd) && clear();
+            case "♕": case "♛": return (fr === tr || fc === tc || Math.abs(rd) === Math.abs(cd)) && clear();
+            case "♔": case "♚": return Math.abs(rd) <= 1 && Math.abs(cd) <= 1;
+        }
+        return false;
+    }
+
+    function isCheck(color) {
+        let king = (color === "white") ? "♔" : "♚";
+        let kr, kc;
+        for (let r=0; r<8; r++) for (let c=0; c<8; c++) if (board[r][c] === king) { kr = r; kc = c; }
+        for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+            let p = board[r][c];
+            if (p !== "" && (color === "white" ? isBlack(p) : isWhite(p))) {
+                if (isValidMove(p, r, c, kr, kc)) return true;
+            }
+        }
+        return false;
+    }
+
+    function updateStatus() {
+        let check = isCheck(currentTurn);
+        let moves = false;
+        outer: for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+            let p = board[r][c];
+            if (p !== "" && (currentTurn === "white" ? isWhite(p) : isBlack(p))) {
+                for (let tr=0; tr<8; tr++) for (let tc=0; tc<8; tc++) {
+                    if (isValidMove(p, r, c, tr, tc) || ( (p==="♔"||p==="♚") && Math.abs(tc-c)===2 && canCastle(r,c,tr,tc) )) {
+                        let b = board[tr][tc]; board[tr][tc] = p; board[r][c] = "";
+                        let safe = !isCheck(currentTurn);
+                        board[r][c] = p; board[tr][tc] = b;
+                        if (safe) { moves = true; break outer; }
+                    }
+                }
+            }
+        }
+
+        if (!moves) {
+            let winner = (currentTurn === "white" ? "Black" : "White");
+            document.getElementById("resultTitle").textContent = check ? winner.toUpperCase() + " WINS!" : "DRAW!";
+            document.getElementById("resultText").textContent = check ? "Checkmate" : "Stalemate";
+            resultScreen.style.display = "flex";
+            document.body.classList.add("gameOver");
+        }
+        info.textContent = currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1) + "'s Turn" + (check ? " (Check!)" : "");
+    }
+
+    function promotionMenu(r, c, p) {
+        promoDiv.style.display = "block";
+        const options = isWhite(p) ? ["♕", "♖", "♗", "♘"] : ["♛", "♜", "♝", "♞"];
+        const container = promoDiv.querySelector(".promo-options");
+        container.innerHTML = "";
+        options.forEach(opt => {
+            let span = document.createElement("span");
+            span.textContent = opt;
+            span.onclick = () => {
+                board[r][c] = opt;
+                promoDiv.style.display = "none";
+                draw();
+                updateStatus();
+            };
+            container.appendChild(span);
+        });
+    }
+
+    draw();
+</script>
+</body>
+</html>
