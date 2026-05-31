@@ -1,0 +1,133 @@
+@media (max-width: 1100px) {
+    .hero {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-copy,
+    .hero-preview {
+        grid-column: 1 / -1;
+    }
+
+    .features,
+    .game-launcher,
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    #gameStage {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .board-frame {
+        justify-items: center;
+        align-items: center;
+    }
+
+    .board-card {
+        padding: 14px;
+    }
+}
+
+@media (max-width: 840px) {
+    .page-header {
+        padding: 12px 0;
+    }
+
+    .navbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .hero {
+        padding-top: 48px;
+        gap: 24px;
+    }
+
+    .hero-copy h2 {
+        font-size: clamp(2.8rem, 8vw, 4rem);
+    }
+
+    .preview-card {
+        padding: 22px;
+    }
+}
+
+@media (max-width: 680px) {
+    .container {
+        width: calc(100% - 24px);
+    }
+
+    .hero {
+        padding: 48px 0 72px;
+    }
+
+    .brand-title h1 {
+        font-size: 1.5rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .preview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .game-card,
+    .feature-card {
+        padding: 20px;
+    }
+
+    .panel {
+        padding: 20px;
+    }
+
+    .move-history {
+        max-height: 260px;
+    }
+}
+
+@media (max-width: 560px) {
+    #boardGrid {
+        width: min(100%, calc(100vh - 180px), calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        height: min(calc(100vw - 24px), calc(100vh - 180px), 640px);
+    }
+
+    .board-card {
+        padding: 12px;
+    }
+
+    .timer-card,
+    .status-pill,
+    .small-panel,
+    .control-grid button {
+        padding: 12px 14px;
+    }
+}
+
+@media (max-width: 540px) {
+    .square.selected,
+    .square.last-move {
+        outline-offset: 0;
+    }
+
+    .status-pill,
+    .timer-card,
+    .badge,
+    .small-panel {
+        padding: 12px;
+    }
+
+    footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}

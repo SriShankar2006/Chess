@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grandmaster Chess Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/board.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b1726">
+</head>
+<body data-theme="dark">
+
+<header class="page-header">
+    <div class="container navbar">
+        <div class="brand">
+            <div class="brand-mark"><span>♟</span></div>
+            <div class="brand-title">
+                <h1>Grandmaster Chess Arena</h1>
+                <p>Modern chess with AI, local play, history tracking and polished interactions.</p>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button id="themeToggle" class="flat-button">Light Mode</button>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <section id="landingSection" class="landing-hero">
+        <div class="hero">
+            <div class="hero-copy">
+                <span class="eyebrow">Premium Chess</span>
+                <h2>Play smarter and faster with polished chess UX.</h2>
+                <p>Choose your mode, challenge the AI, or set up a room and enjoy a premium chess experience in the browser.</p>
+                <div class="hero-actions">
+                    <button id="playAI" class="primary-button button-primary">Play vs AI</button>
+                    <button id="playLocal" class="secondary-button button-secondary">Local Multiplayer</button>
+                    <button id="playOnline" class="secondary-button button-secondary">Online Multiplayer</button>
+                </div>
+            </div>
+            <div class="hero-preview preview-card glow-card">
+                <div class="preview-heading">
+                    <h3>Highlights</h3>
+                    <span class="badge">Live</span>
+                </div>
+                <div class="preview-grid">
+                    <div class="preview-item"><h4>Beautiful Board</h4><p>Rounded tiles, glass accents, and subtle hover animations.</p></div>
+                    <div class="preview-item"><h4>Move Guidance</h4><p>Legal moves and last-move tracking keep every turn crystal clear.</p></div>
+                    <div class="preview-item"><h4>Timer Support</h4><p>Choose 1, 3, 5 or 10 minute clock modes before each game.</p></div>
+                    <div class="preview-item"><h4>Smart History</h4><p>Move notation, captured piece panels, and game result presentation.</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>Dark & Light Themes</h3>
+                <p>Save your preference and play comfortably day or night.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Responsive Layout</h3>
+                <p>Mobile-first controls, touch-friendly buttons, and no horizontal scrolling.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Real Chess Rules</h3>
+                <p>Castling, promotion, check, checkmate and stalemate detection.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="gameSection" class="game-panel" style="display:none;">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h3>Match Control</h3>
+                    <p id="statusLabel">White to move</p>
+                </div>
+                <div class="panel-header-actions">
+                    <div class="status-pill">
+                        <span class="dot"></span>
+                        <span id="activeModeLabel">Local Multiplayer</span>
+                    </div>
+                    <button id="exitMatchBtn" class="secondary-button exit-button">Exit Match</button>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="small-panel">
+                    <label for="difficultySelect">Difficulty</label>
+                    <select id="difficultySelect" class="difficulty-selector">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="small-panel">
+                    <label for="timerMode">Timer</label>
+                    <select id="timerMode" class="mode-selector">
+                        <option value="1">1 Minute</option>
+                        <option value="3" selected>3 Minutes</option>
+                        <option value="5">5 Minutes</option>
+                        <option value="10">10 Minutes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameStage">
+            <div class="board-frame">
+                <div class="board-card">
+                    <div id="boardGrid"></div>
+                </div>
+                <div class="panel timer-panel">
+                    <div class="timer-card"><span>White</span><strong id="whiteTimer">03:00</strong></div>
+                    <div class="timer-card"><span>Black</span><strong id="blackTimer">03:00</strong></div>
+                </div>
+            </div>
+
+            <div class="card-grid">
+                <div class="panel">
+                    <div class="panel-header"><h3>Captured Pieces</h3></div>
+                    <div id="capturedArea">
+                        <div><strong>White Captured</strong></div>
+                        <div id="capturedWhite" class="captured-row"></div>
+                        <div><strong>Black Captured</strong></div>
+                        <div id="capturedBlack" class="captured-row"></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header"><h3>Move History</h3></div>
+                    <div id="historyList" class="move-history"></div>
+                </div>
+
+                <div class="panel control-grid">
+                    <button id="undoBtn" class="secondary-button">Undo Move</button>
+                    <button id="drawBtn" class="secondary-button">Offer Draw</button>
+                    <button id="resignBtn" class="secondary-button">Resign</button>
+                    <button id="restartBtn" class="primary-button button-primary">Restart Game</button>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header"><h3>Room Setup</h3></div>
+                    <input id="roomCodeInput" class="room-input" placeholder="Enter room code" aria-label="Room code" />
+                    <div class="hero-actions" style="margin-top: 16px;">
+                        <button id="createRoomBtn" class="secondary-button">Create Room</button>
+                        <button id="joinRoomBtn" class="secondary-button">Join Room</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="promotionModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3>Choose Promotion</h3>
+        <p>Select a piece to promote your pawn.</p>
+        <div id="promotionOptions" class="hero-actions"></div>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3 id="modalTitle">Confirmation</h3>
+        <p id="modalText">Are you sure?</p>
+        <div class="modal-actions">
+            <button id="confirmNo" class="secondary-button">Cancel</button>
+            <button id="confirmYes" class="primary-button button-primary">Yes</button>
+        </div>
+    </div>
+</div>
+
+<div id="resultScreen" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3 id="resultTitle">Game Over</h3>
+        <p id="resultDesc">Result details appear here.</p>
+        <div class="modal-actions">
+            <button id="resultRestart" class="primary-button button-primary">Play Again</button>
+            <button id="resultHome" class="secondary-button">Return Home</button>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <span>Grandmaster Chess Arena • Built for premium chess play.</span>
+    <span class="footer-links"><a href="#">Features</a><a href="#">Accessibility</a><a href="#">Support</a></span>
+</footer>
+
+<script type="module" src="js/ui.js"></script>
+</body>
+</html>
