@@ -13,43 +13,50 @@ const state = {
 
 const refs = {};
 let timer;
+// Poll interval for the joining device to pick up room state changes
+let syncPollInterval = null;
 
 function init() {
-    refs.navTheme = document.getElementById('themeToggle');
-    refs.landing = document.getElementById('landingSection');
-    refs.gameScreen = document.getElementById('gameSection');
-    refs.boardGrid = document.getElementById('boardGrid');
-    refs.historyList = document.getElementById('historyList');
-    refs.capturedWhite = document.getElementById('capturedWhite');
-    refs.capturedBlack = document.getElementById('capturedBlack');
-    refs.statusLabel = document.getElementById('statusLabel');
-    refs.activeModeLabel = document.getElementById('activeModeLabel');
-    refs.difficultySelect = document.getElementById('difficultySelect');
-    refs.timerMode = document.getElementById('timerMode');
-    refs.startAIBtn = document.getElementById('playAI');
-    refs.startLocalBtn = document.getElementById('playLocal');
-    refs.startOnlineBtn = document.getElementById('playOnline');
-    refs.exitMatchBtn = document.getElementById('exitMatchBtn');
-    refs.roomCodeInput = document.getElementById('roomCodeInput');
-    refs.createRoomBtn = document.getElementById('createRoomBtn');
-    refs.joinRoomBtn = document.getElementById('joinRoomBtn');
-    refs.promotionModal = document.getElementById('promotionModal');
-    refs.promotionOptions = document.getElementById('promotionOptions');
-    refs.modalTitle = document.getElementById('modalTitle');
-    refs.modalText = document.getElementById('modalText');
-    refs.confirmYes = document.getElementById('confirmYes');
-    refs.confirmNo = document.getElementById('confirmNo');
-    refs.resultScreen = document.getElementById('resultScreen');
-    refs.resultTitle = document.getElementById('resultTitle');
-    refs.resultDesc = document.getElementById('resultDesc');
-    refs.resultRestart = document.getElementById('resultRestart');
-    refs.resultHome = document.getElementById('resultHome');
-    refs.whiteTimer = document.getElementById('whiteTimer');
-    refs.blackTimer = document.getElementById('blackTimer');
-    refs.undoBtn = document.getElementById('undoBtn');
-    refs.resignBtn = document.getElementById('resignBtn');
-    refs.drawBtn = document.getElementById('drawBtn');
-    refs.restartBtn = document.getElementById('restartBtn');
+    refs.navTheme            = document.getElementById('themeToggle');
+    refs.landing             = document.getElementById('landingSection');
+    refs.gameScreen          = document.getElementById('gameSection');
+    refs.boardGrid           = document.getElementById('boardGrid');
+    refs.historyList         = document.getElementById('historyList');
+    refs.capturedWhite       = document.getElementById('capturedWhite');
+    refs.capturedBlack       = document.getElementById('capturedBlack');
+    refs.statusLabel         = document.getElementById('statusLabel');
+    refs.activeModeLabel     = document.getElementById('activeModeLabel');
+    refs.difficultySelect    = document.getElementById('difficultySelect');
+    refs.timerMode           = document.getElementById('timerMode');
+    refs.startAIBtn          = document.getElementById('playAI');
+    refs.startLocalBtn       = document.getElementById('playLocal');
+    refs.startOnlineBtn      = document.getElementById('playOnline');
+    refs.exitMatchBtn        = document.getElementById('exitMatchBtn');
+    refs.roomPanel           = document.getElementById('roomPanel');
+    refs.roomCodeInput       = document.getElementById('roomCodeInput');
+    refs.createRoomBtn       = document.getElementById('createRoomBtn');
+    refs.joinRoomBtn         = document.getElementById('joinRoomBtn');
+    refs.activeRoomDisplay   = document.getElementById('activeRoomDisplay');
+    refs.activeRoomCode      = document.getElementById('activeRoomCode');
+    refs.copyRoomBtn         = document.getElementById('copyRoomBtn');
+    refs.roomJoinControls    = document.getElementById('roomJoinControls');
+    refs.promotionModal      = document.getElementById('promotionModal');
+    refs.promotionOptions    = document.getElementById('promotionOptions');
+    refs.modalTitle          = document.getElementById('modalTitle');
+    refs.modalText           = document.getElementById('modalText');
+    refs.confirmYes          = document.getElementById('confirmYes');
+    refs.confirmNo           = document.getElementById('confirmNo');
+    refs.resultScreen        = document.getElementById('resultScreen');
+    refs.resultTitle         = document.getElementById('resultTitle');
+    refs.resultDesc          = document.getElementById('resultDesc');
+    refs.resultRestart       = document.getElementById('resultRestart');
+    refs.resultHome          = document.getElementById('resultHome');
+    refs.whiteTimer          = document.getElementById('whiteTimer');
+    refs.blackTimer          = document.getElementById('blackTimer');
+    refs.undoBtn             = document.getElementById('undoBtn');
+    refs.resignBtn           = document.getElementById('resignBtn');
+    refs.drawBtn             = document.getElementById('drawBtn');
+    refs.restartBtn          = document.getElementById('restartBtn');
 
     state.theme = localStorage.getItem('chessTheme') || 'dark';
     setTheme(state.theme);
@@ -87,8 +94,11 @@ function applyEventListeners() {
     refs.startAIBtn.addEventListener('click', () => launchGame('ai'));
     refs.startLocalBtn.addEventListener('click', () => launchGame('local'));
     refs.startOnlineBtn.addEventListener('click', () => launchGame('online'));
+
     refs.createRoomBtn.addEventListener('click', createRoom);
     refs.joinRoomBtn.addEventListener('click', () => joinRoom(refs.roomCodeInput.value.trim()));
+    refs.copyRoomBtn.addEventListener('click', copyRoomId);
+
     refs.confirmNo.addEventListener('click', closeModal);
     refs.resultRestart.addEventListener('click', () => { closeResult(); launchGame(gameState.mode); });
     refs.resultHome.addEventListener('click', () => { closeResult(); switchView('landing'); });
@@ -96,12 +106,15 @@ function applyEventListeners() {
     refs.resignBtn.addEventListener('click', () => confirmAction('resign', 'Are you sure you want to resign?', resignGame));
     refs.drawBtn.addEventListener('click', offerDraw);
     refs.restartBtn.addEventListener('click', () => confirmAction('restart', 'Restart this game and clear the board?', () => launchGame(gameState.mode)));
+
+    // Cross-tab storage sync (works when both tabs are on the same origin/device)
     window.addEventListener('storage', handleStorageSync);
 }
 
 function setTheme(theme) {
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
     localStorage.setItem('chessTheme', theme);
     refs.navTheme.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
 }
@@ -111,47 +124,15 @@ function toggleTheme() {
     showToast(`${state.theme.charAt(0).toUpperCase() + state.theme.slice(1)} mode enabled`, 'success');
 }
 
-function toggleSound() {
-    state.soundEnabled = !state.soundEnabled;
-    refs.soundToggle.textContent = state.soundEnabled ? 'Mute' : 'Sound Off';
-    showToast(state.soundEnabled ? 'Sound enabled' : 'Sound disabled', 'default');
-}
-
 function registerInstallPrompt() {
     window.addEventListener('beforeinstallprompt', event => {
         event.preventDefault();
         state.deferredPrompt = event;
-        if (refs.installBtn) {
-            refs.installBtn.style.display = 'inline-flex';
-        }
     });
-
     window.addEventListener('appinstalled', () => {
         showToast('App installed successfully!', 'success');
         state.deferredPrompt = null;
-        if (refs.installBtn) {
-            refs.installBtn.style.display = 'none';
-        }
     });
-}
-
-function promptInstall() {
-    if (!refs.installBtn) return;
-    if (state.deferredPrompt) {
-        state.deferredPrompt.prompt();
-        state.deferredPrompt.userChoice.then(choice => {
-            if (choice.outcome === 'accepted') {
-                showToast('App install accepted', 'success');
-            } else {
-                showToast('App install dismissed', 'warning');
-            }
-            state.deferredPrompt = null;
-            refs.installBtn.style.display = 'none';
-        });
-        return;
-    }
-
-    showToast('If install did not appear, use your browser menu to add this app to your desktop or home screen.', 'info');
 }
 
 function registerServiceWorker() {
@@ -163,27 +144,74 @@ function registerServiceWorker() {
 }
 
 function switchView(view) {
-    refs.landing.style.display = view === 'landing' ? 'block' : 'none';
-    refs.gameScreen.style.display = view === 'game' ? 'block' : 'none';
+    refs.landing.style.display    = view === 'landing' ? 'block' : 'none';
+    refs.gameScreen.style.display = view === 'game'    ? 'block' : 'none';
     state.activeView = view;
     if (view === 'landing') {
         timer.pause();
+        stopSyncPoll();
     }
+}
+
+// Show / hide the Room Setup panel based on mode
+function updateRoomPanelVisibility() {
+    if (gameState.mode === 'online') {
+        refs.roomPanel.style.display = 'block';
+    } else {
+        refs.roomPanel.style.display = 'none';
+    }
+}
+
+// After a room is created or joined, show the room ID badge and hide the join controls
+function showActiveRoom(code) {
+    refs.activeRoomCode.textContent  = code;
+    refs.activeRoomDisplay.style.display = 'block';
+    refs.roomJoinControls.style.display  = 'none';
+}
+
+// Reset to the join controls (e.g. when exiting match)
+function resetRoomPanel() {
+    refs.activeRoomDisplay.style.display = 'none';
+    refs.roomJoinControls.style.display  = 'block';
+    refs.roomCodeInput.value             = '';
+    refs.activeRoomCode.textContent      = '';
+}
+
+function copyRoomId() {
+    const code = gameState.roomCode;
+    if (!code) return;
+    navigator.clipboard.writeText(code)
+        .then(() => showToast('Room ID copied to clipboard!', 'success'))
+        .catch(() => {
+            // Fallback for older browsers / http contexts
+            const el = document.createElement('textarea');
+            el.value = code;
+            el.style.position = 'fixed';
+            el.style.opacity  = '0';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Room ID copied!', 'success');
+        });
 }
 
 function launchGame(mode) {
     startNewGame({ mode, aiLevel: refs.difficultySelect.value, timerMinutes: Number(refs.timerMode.value) });
     timer.initialize(Number(refs.timerMode.value));
     timer.start('white');
-    refs.activeModeLabel.textContent = mode === 'ai' ? 'AI Opponent' : mode === 'online' ? 'Online Room' : 'Local Multiplayer';
+    refs.activeModeLabel.textContent = mode === 'ai' ? 'AI Opponent' : mode === 'online' ? 'Online Multiplayer' : 'Local Multiplayer';
     switchView('game');
+    updateRoomPanelVisibility();
+    resetRoomPanel();
+    stopSyncPoll();
     refs.boardGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     renderBoard();
     updateStatusPanel();
     updateCapturedLists();
     updateMoveHistory();
     if (mode === 'online') {
-        showToast('Online room mode loaded. Create a room or enter a code to join.', 'success');
+        showToast('Online mode ready. Create a room or enter an ID to join.', 'success');
     } else {
         showToast(mode === 'ai' ? 'Playing against the AI' : 'Local multiplayer ready', 'success');
     }
@@ -191,11 +219,15 @@ function launchGame(mode) {
 
 function exitMatch() {
     timer.pause();
-    if (gameState.mode === 'online') {
-        gameState.roomCode = null;
+    stopSyncPoll();
+    if (gameState.mode === 'online' && gameState.roomCode) {
+        // Clean up the room from localStorage so the slot is freed
+        localStorage.removeItem(`chess-room-${gameState.roomCode}`);
+        gameState.roomCode  = null;
         gameState.roomOwner = false;
     }
     gameState.isGameOver = true;
+    resetRoomPanel();
     switchView('landing');
     showToast('Exited current match', 'info');
 }
@@ -203,15 +235,26 @@ function exitMatch() {
 function handleSquareClick(r, c) {
     if (gameState.isGameOver) return;
     if (gameState.pendingPromotion) return;
+
+    // In online mode, only the correct player can move
+    if (gameState.mode === 'online') {
+        // Owner plays white, guest plays black
+        const myColor = gameState.roomOwner ? 'white' : 'black';
+        if (gameState.currentTurn !== myColor) {
+            showToast("It's your opponent's turn", 'warning');
+            return;
+        }
+    }
+
     const selected = gameState.selectedSquare;
     if (selected && selected.r === r && selected.c === c) {
         gameState.selectedSquare = null;
-        gameState.legalMoves = [];
+        gameState.legalMoves     = [];
         renderBoard();
         return;
     }
     const before = gameState.selectedSquare;
-    const legal = getLegalMovesForSquare(r, c, gameState.board, gameState.currentTurn);
+    const legal  = getLegalMovesForSquare(r, c, gameState.board, gameState.currentTurn);
     if (before && gameState.legalMoves.some(move => move.to.r === r && move.to.c === c)) {
         const result = makeMove(before, { r, c });
         completeMove(result);
@@ -219,12 +262,12 @@ function handleSquareClick(r, c) {
     }
     if (legal.length) {
         gameState.selectedSquare = { r, c };
-        gameState.legalMoves = legal;
+        gameState.legalMoves     = legal;
         renderBoard();
         return;
     }
     gameState.selectedSquare = null;
-    gameState.legalMoves = [];
+    gameState.legalMoves     = [];
     renderBoard();
 }
 
@@ -265,16 +308,17 @@ function runAI() {
 function openPromotionModal() {
     refs.promotionModal.classList.add('active');
     refs.promotionModal.style.display = 'flex';
-    refs.promotionOptions.innerHTML = '';
-    ['q','r','b','n'].forEach(choice => {
+    refs.promotionOptions.innerHTML   = '';
+    ['q', 'r', 'b', 'n'].forEach(choice => {
         const button = document.createElement('button');
-        button.className = 'secondary-button';
+        button.className   = 'secondary-button';
         button.textContent = choice.toUpperCase();
-        button.type = 'button';
+        button.type        = 'button';
         button.addEventListener('click', () => {
             promotePawn(choice);
             refs.promotionModal.classList.remove('active');
             refs.promotionModal.style.display = 'none';
+            if (gameState.mode === 'online') syncRoomState();
             onMoveComplete();
         });
         refs.promotionOptions.appendChild(button);
@@ -288,7 +332,10 @@ function renderBoard() {
         const col = Number(square.dataset.col);
         square.classList.remove('selected', 'highlight-move', 'highlight-capture', 'last-move');
         square.innerHTML = '';
-        if (gameState.lastMove && ((gameState.lastMove.from.r === row && gameState.lastMove.from.c === col) || (gameState.lastMove.to.r === row && gameState.lastMove.to.c === col))) {
+        if (gameState.lastMove && (
+            (gameState.lastMove.from.r === row && gameState.lastMove.from.c === col) ||
+            (gameState.lastMove.to.r   === row && gameState.lastMove.to.c   === col)
+        )) {
             square.classList.add('last-move');
         }
         if (gameState.selectedSquare && gameState.selectedSquare.r === row && gameState.selectedSquare.c === col) {
@@ -296,7 +343,7 @@ function renderBoard() {
         }
         const piece = gameState.board[row][col];
         if (piece) {
-            const element = document.createElement('span');
+            const element     = document.createElement('span');
             element.className = `piece ${isWhite(piece) ? 'white-piece' : 'black-piece'}`;
             element.textContent = getUnicode(piece);
             square.appendChild(element);
@@ -318,13 +365,13 @@ function updateCapturedLists() {
     refs.capturedBlack.innerHTML = '';
     gameState.capturedWhite.forEach(piece => {
         const slot = document.createElement('span');
-        slot.className = 'captured-piece';
+        slot.className   = 'captured-piece';
         slot.textContent = piece;
         refs.capturedWhite.appendChild(slot);
     });
     gameState.capturedBlack.forEach(piece => {
         const slot = document.createElement('span');
-        slot.className = 'captured-piece';
+        slot.className   = 'captured-piece';
         slot.textContent = piece;
         refs.capturedBlack.appendChild(slot);
     });
@@ -342,6 +389,7 @@ function updateTimers(payload) {
 
 function handleTimeout(player) {
     timer.pause();
+    stopSyncPoll();
     gameState.isGameOver = true;
     gameState.result = { finished: true, winner: player === 'white' ? 'black' : 'white', reason: 'timeout' };
     openResultScreen();
@@ -350,7 +398,9 @@ function handleTimeout(player) {
 
 function openResultScreen() {
     timer.pause();
-    refs.resultTitle.textContent = gameState.result.winner ? `${gameState.result.winner.toUpperCase()} WINS` : 'DRAW';
+    refs.resultTitle.textContent = gameState.result.winner
+        ? `${gameState.result.winner.toUpperCase()} WINS`
+        : 'DRAW';
     refs.resultDesc.textContent = gameState.result.reason.replace(/([a-z])([A-Z])/g, '$1 $2');
     refs.resultScreen.classList.add('active');
     refs.resultScreen.style.display = 'flex';
@@ -363,9 +413,9 @@ function closeResult() {
 
 function confirmAction(key, text, callback) {
     refs.modalTitle.textContent = 'Confirmation';
-    refs.modalText.textContent = text;
+    refs.modalText.textContent  = text;
     refs.confirmYes.onclick = () => { callback(); closeModal(); };
-    refs.confirmNo.onclick = closeModal;
+    refs.confirmNo.onclick  = closeModal;
     openModal();
 }
 
@@ -393,7 +443,7 @@ function offerDraw() {
         return;
     }
     gameState.drawOffer = gameState.currentTurn;
-    showToast(`${gameState.currentTurn.charAt(0).toUpperCase() + gameState.currentTurn.slice(1)} offers a draw`, 'warning');
+    showToast(`${gameState.currentTurn.charAt(0).toUpperCase() + gameState.currentTurn.slice(1)} offers a draw. Click "Offer Draw" again to accept.`, 'warning');
 }
 
 function undoMove() {
@@ -404,7 +454,7 @@ function undoMove() {
     const snapshot = gameState.historySnapshots.pop();
     Object.assign(gameState, snapshot);
     gameState.isGameOver = false;
-    gameState.result = null;
+    gameState.result     = null;
     timer.switchTo(gameState.currentTurn);
     if (gameState.mode === 'online') syncRoomState();
     renderBoard();
@@ -414,69 +464,180 @@ function undoMove() {
     showToast('Move undone', 'success');
 }
 
+// ─── Online Room Logic ────────────────────────────────────────────────────────
+
 function createRoom() {
-    if (gameState.mode !== 'online') launchGame('online');
+    // Generate a readable 6-char room code
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    gameState.roomCode = code;
+    gameState.roomCode  = code;
     gameState.roomOwner = true;
+
+    // Write initial room state to localStorage so the other device can find it
     syncRoomState();
+
+    // Update UI
+    showActiveRoom(code);
     showToast(`Room created: ${code}`, 'success');
+
+    // Start polling so the owner can see the guest joining and moves being made
+    startSyncPoll();
 }
 
 function joinRoom(code) {
-    if (!code) return showToast('Enter a room code to join', 'warning');
-    const entry = localStorage.getItem(`chess-room-${code}`);
-    if (!entry) return showToast('Room not found', 'danger');
-    if (gameState.mode !== 'online') launchGame('online');
+    if (!code) {
+        showToast('Enter a room ID to join', 'warning');
+        return;
+    }
+
+    const key   = `chess-room-${code}`;
+    const entry = localStorage.getItem(key);
+
+    if (!entry) {
+        showToast('Room not found. Make sure the room ID is correct and the host device has created the room.', 'danger');
+        return;
+    }
+
+    // Parse room state from storage
     const room = JSON.parse(entry);
-    gameState.roomCode = code;
-    gameState.roomOwner = false;
-    gameState.board = room.board;
+
+    // Apply room state WITHOUT calling launchGame (which would reset everything)
+    gameState.mode        = 'online';
+    gameState.roomCode    = code;
+    gameState.roomOwner   = false;
+    gameState.board       = room.board;
     gameState.currentTurn = room.currentTurn;
-    gameState.lastMove = room.lastMove;
-    gameState.moveHistory = room.moveHistory || [];
+    gameState.lastMove    = room.lastMove  || null;
+    gameState.moveHistory = room.moveHistory   || [];
     gameState.capturedWhite = room.capturedWhite || [];
     gameState.capturedBlack = room.capturedBlack || [];
-    gameState.lastSync = room.timestamp;
+    gameState.lastSync    = room.timestamp;
+    gameState.isGameOver  = false;
+    gameState.result      = null;
+    gameState.selectedSquare = null;
+    gameState.legalMoves     = [];
+    gameState.historySnapshots = gameState.historySnapshots || [];
+
+    // Switch to game view if not already there
+    if (state.activeView !== 'game') {
+        refs.activeModeLabel.textContent = 'Online Multiplayer';
+        switchView('game');
+        updateRoomPanelVisibility();
+    }
+
+    // Show active room UI
+    showActiveRoom(code);
+
+    timer.initialize(gameState.timerMinutes || 3);
+    timer.start(gameState.currentTurn);
+
     renderBoard();
     updateStatusPanel();
     updateCapturedLists();
     updateMoveHistory();
-    showToast(`Joined room ${code}`, 'success');
+    showToast(`Joined room ${code}. You are playing as Black.`, 'success');
+
+    // Poll for opponent's moves
+    startSyncPoll();
 }
 
+/**
+ * Write the current game state to localStorage so the other device can read it.
+ */
 function syncRoomState() {
     if (gameState.mode !== 'online' || !gameState.roomCode) return;
     const roomState = {
-        board: gameState.board,
-        currentTurn: gameState.currentTurn,
-        lastMove: gameState.lastMove,
-        moveHistory: gameState.moveHistory,
+        board:         gameState.board,
+        currentTurn:   gameState.currentTurn,
+        lastMove:      gameState.lastMove,
+        moveHistory:   gameState.moveHistory,
         capturedWhite: gameState.capturedWhite,
         capturedBlack: gameState.capturedBlack,
-        timestamp: Date.now()
+        isGameOver:    gameState.isGameOver,
+        result:        gameState.result,
+        timestamp:     Date.now()
     };
     localStorage.setItem(`chess-room-${gameState.roomCode}`, JSON.stringify(roomState));
 }
 
-function handleStorageSync(event) {
-    if (!event.key || !event.key.startsWith('chess-room-')) return;
-    if (gameState.roomCode && event.key.endsWith(gameState.roomCode)) {
-        const latest = localStorage.getItem(event.key);
-        if (latest) {
-            const room = JSON.parse(latest);
-            if (!room.timestamp || room.timestamp === gameState.lastSync) return;
-            gameState.board = room.board;
-            gameState.currentTurn = room.currentTurn;
-            gameState.lastMove = room.lastMove;
-            gameState.lastSync = room.timestamp;
-            renderBoard();
-            updateStatusPanel();
-            updateCapturedLists();
-            updateMoveHistory();
-            showToast('Online room updated', 'success');
-        }
+/**
+ * Apply a room snapshot from localStorage to live game state and re-render.
+ */
+function applyRoomSnapshot(room) {
+    if (!room || room.timestamp === gameState.lastSync) return;
+    gameState.board         = room.board;
+    gameState.currentTurn   = room.currentTurn;
+    gameState.lastMove      = room.lastMove  || null;
+    gameState.moveHistory   = room.moveHistory   || [];
+    gameState.capturedWhite = room.capturedWhite || [];
+    gameState.capturedBlack = room.capturedBlack || [];
+    gameState.lastSync      = room.timestamp;
+
+    if (room.isGameOver && !gameState.isGameOver) {
+        gameState.isGameOver = true;
+        gameState.result     = room.result;
+    }
+
+    renderBoard();
+    updateStatusPanel();
+    updateCapturedLists();
+    updateMoveHistory();
+
+    if (gameState.isGameOver) {
+        openResultScreen();
     }
 }
+
+/**
+ * storage event fires on OTHER tabs on the same browser.
+ * This handles same-browser two-tab testing.
+ */
+function handleStorageSync(event) {
+    if (!event.key || !event.key.startsWith('chess-room-')) return;
+    if (!gameState.roomCode || !event.key.endsWith(gameState.roomCode)) return;
+    if (gameState.mode !== 'online') return;
+
+    const latest = localStorage.getItem(event.key);
+    if (!latest) return;
+
+    try {
+        const room = JSON.parse(latest);
+        applyRoomSnapshot(room);
+    } catch (e) {
+        console.warn('Room sync parse error', e);
+    }
+}
+
+/**
+ * Polling is necessary for cross-device scenarios where storage events
+ * don't fire (different browsers / devices sharing the same localStorage
+ * via a shared server, or during development via file:// where storage
+ * events are unreliable).
+ *
+ * Polls every 1.5 seconds.
+ */
+function startSyncPoll() {
+    stopSyncPoll();
+    syncPollInterval = setInterval(() => {
+        if (gameState.mode !== 'online' || !gameState.roomCode) return;
+        const key    = `chess-room-${gameState.roomCode}`;
+        const latest = localStorage.getItem(key);
+        if (!latest) return;
+        try {
+            const room = JSON.parse(latest);
+            applyRoomSnapshot(room);
+        } catch (e) {
+            console.warn('Room poll parse error', e);
+        }
+    }, 1500);
+}
+
+function stopSyncPoll() {
+    if (syncPollInterval) {
+        clearInterval(syncPollInterval);
+        syncPollInterval = null;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 init();

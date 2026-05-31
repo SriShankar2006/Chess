@@ -8,14 +8,14 @@
   "background_color": "#07101c",
   "icons": [
     {
-      "src": "assets/images/icon.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml"
+      "src": "assets/images/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
     },
     {
-      "src": "assets/images/icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml"
+      "src": "assets/images/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
     }
   ]
 }

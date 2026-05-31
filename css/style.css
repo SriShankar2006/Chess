@@ -60,6 +60,19 @@
     color: var(--text);
 }
 
+[data-theme='light'] .brand-mark {
+    background: linear-gradient(135deg, rgba(47, 139, 234, 0.2), rgba(47, 139, 234, 0.08)) !important;
+    border: 1px solid rgba(47, 139, 234, 0.25) !important;
+}
+
+[data-theme='light'] .small-panel label {
+    color: #172d41;
+}
+
+[data-theme='light'] .small-panel {
+    color: #172d41;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -77,14 +90,6 @@ body {
     color: var(--text);
     line-height: 1.55;
     overflow-x: hidden;
-}
-
-body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background-image: url('');
 }
 
 img {
@@ -147,7 +152,7 @@ button {
     border-radius: 14px;
     background: radial-gradient(circle at top, rgba(88, 179, 255, 0.4), rgba(88, 179, 255, 0.12));
     border: 1px solid rgba(255, 255, 255, 0.08);
-}\n\n[data-theme='light'] .brand-mark {\n    background: linear-gradient(135deg, rgba(47, 139, 234, 0.2), rgba(47, 139, 234, 0.08)) !important;\n    border: 1px solid rgba(47, 139, 234, 0.25) !important;\n}
+}
 
 .brand-mark span {
     font-size: 1.25rem;
@@ -445,10 +450,6 @@ button {
     gap: 14px;
 }
 
-[data-theme='light'] .small-panel label {\n    color: #172d41;\n}\n\n[data-theme='light'] .small-panel {
-    color: #172d41;
-}
-
 .badge {
     display: inline-flex;
     align-items: center;
@@ -537,13 +538,15 @@ button {
     background: rgba(255, 255, 255, 0.96) !important;
     border: 1px solid rgba(47, 139, 234, 0.2) !important;
     box-shadow: 0 16px 40px rgba(47, 139, 234, 0.12) !important;
-}\n\n.toast.toast-success { border-color: rgba(52, 211, 153, 0.3); }
+}
+
+.toast.toast-success { border-color: rgba(52, 211, 153, 0.3); }
 .toast.toast-warning { border-color: rgba(251, 191, 36, 0.3); }
-.toast.toast-danger { border-color: rgba(248, 113, 113, 0.3); }
+.toast.toast-danger  { border-color: rgba(248, 113, 113, 0.3); }
 
 [data-theme='light'] .toast.toast-success { border-color: rgba(16, 185, 129, 0.3) !important; }
 [data-theme='light'] .toast.toast-warning { border-color: rgba(251, 191, 36, 0.3) !important; }
-[data-theme='light'] .toast.toast-danger { border-color: rgba(239, 68, 68, 0.3) !important; }
+[data-theme='light'] .toast.toast-danger  { border-color: rgba(239, 68, 68, 0.3) !important; }
 
 @keyframes slideIn {
     to { opacity: 1; transform: translateX(0); }
@@ -576,4 +579,65 @@ footer {
 
 .footer-links a {
     color: var(--text-muted);
+}
+
+/* ── Room ID display row ───────────────────────────────────────────── */
+.room-id-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.room-id-badge {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid rgba(88, 179, 255, 0.28);
+    border-radius: 12px;
+    padding: 8px 18px;
+    font-family: 'Poppins', monospace;
+    word-break: break-all;
+}
+
+.copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.copy-btn svg {
+    flex-shrink: 0;
+}
+
+.room-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 180ms ease;
+}
+
+.room-input:focus {
+    border-color: var(--accent);
+}
+
+[data-theme='light'] .room-input {
+    background: rgba(47, 139, 234, 0.05);
+    border-color: rgba(47, 139, 234, 0.2);
+}
+
+[data-theme='light'] .room-id-badge {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: rgba(47, 139, 234, 0.28);
 }

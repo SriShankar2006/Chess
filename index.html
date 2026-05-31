@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grandmaster Chess Arena</title>
     <link rel="icon" type="image/png" sizes="64x64" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/favicon.png">
     <link rel="shortcut icon" href="assets/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +22,7 @@
 <header class="page-header">
     <div class="container navbar">
         <div class="brand">
-            <div class="brand-mark"><span>♟</span></div>
+            <div class="brand-mark"><span>&#9823;</span></div>
             <div class="brand-title">
                 <h1>Grandmaster Chess Arena</h1>
                 <p>Modern chess with AI, local play, history tracking and polished interactions.</p>
@@ -62,7 +63,7 @@
 
         <div class="features">
             <div class="feature-card">
-                <h3>Dark & Light Themes</h3>
+                <h3>Dark &amp; Light Themes</h3>
                 <p>Save your preference and play comfortably day or night.</p>
             </div>
             <div class="feature-card">
@@ -146,14 +147,33 @@
                     <button id="restartBtn" class="primary-button button-primary">Restart Game</button>
                 </div>
 
-                <div class="panel">
+                <!-- Room Setup: only shown in Online Multiplayer mode (toggled by JS) -->
+                <div id="roomPanel" class="panel" style="display:none;">
                     <div class="panel-header"><h3>Room Setup</h3></div>
-                    <input id="roomCodeInput" class="room-input" placeholder="Enter room code" aria-label="Room code" />
-                    <div class="hero-actions" style="margin-top: 16px;">
-                        <button id="createRoomBtn" class="secondary-button">Create Room</button>
-                        <button id="joinRoomBtn" class="secondary-button">Join Room</button>
+
+                    <!-- Shown once a room is created or joined -->
+                    <div id="activeRoomDisplay" style="display:none; margin-bottom:14px;">
+                        <p style="margin:0 0 8px; color:var(--text-muted); font-size:0.9rem;">Room ID</p>
+                        <div class="room-id-row">
+                            <span id="activeRoomCode" class="room-id-badge"></span>
+                            <button id="copyRoomBtn" class="secondary-button copy-btn" title="Copy Room ID">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <p style="margin:8px 0 0; color:var(--text-muted); font-size:0.85rem;">Share this ID with your opponent to join the room.</p>
+                    </div>
+
+                    <!-- Shown before a room is active -->
+                    <div id="roomJoinControls">
+                        <input id="roomCodeInput" class="room-input" placeholder="Enter room ID to join" aria-label="Room code" />
+                        <div class="hero-actions" style="margin-top: 16px;">
+                            <button id="createRoomBtn" class="secondary-button">Create Room</button>
+                            <button id="joinRoomBtn" class="secondary-button">Join Room</button>
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </section>
@@ -190,7 +210,7 @@
 </div>
 
 <footer>
-    <span>Grandmaster Chess Arena • Built for premium chess play.</span>
+    <span>Grandmaster Chess Arena &bull; Built for premium chess play.</span>
     <span class="footer-links"><a href="#">Features</a><a href="#">Accessibility</a><a href="#">Support</a></span>
 </footer>
 
