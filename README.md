@@ -43,9 +43,10 @@ README.md
 
 ## Notes
 
-- The online room implementation uses browser localStorage for room state synchronization across tabs.
+- The online room implementation now supports a backend API for worldwide room syncing across devices.
+- The local `SERVER_API_URL` in `js/ui.js` is set to `http://localhost:3000` by default; update it to your deployed backend URL for use from GitHub Pages.
 - Chrome install support is included via `manifest.json` and a service worker so the site can behave like a downloadable Progressive Web App.
-- For full remote multiplayer across devices, a backend service or Firebase integration can be added.
+- For full remote multiplayer across devices, host the included `server.js` backend and make sure the server URL is reachable from the browser over HTTPS if the frontend runs on GitHub Pages.
 
 ## Technologies
 

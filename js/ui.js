@@ -3,6 +3,9 @@ import { GameTimer } from './timer.js';
 import { chooseAIMove } from './ai.js';
 import { showToast } from './notification.js';
 
+const SERVER_API_URL = '';
+const ROOM_API_ROOT = `/api/room`;
+
 const state = {
     activeView: 'landing',
     theme: 'dark',
@@ -102,7 +105,12 @@ function applyEventListeners() {
     refs.startOnlineBtn.addEventListener('click', () => launchGame('online'));
 
     refs.createRoomBtn.addEventListener('click', createRoom);
-    refs.joinRoomBtn.addEventListener('click', () => joinRoom(refs.roomCodeInput.value.trim()));
+    refs.joinRoomBtn.addEventListener('click', () => joinRoom(refs.roomCodeInput.value));
+    if (refs.roomCodeInput) {
+        refs.roomCodeInput.addEventListener('input', event => {
+            event.target.value = event.target.value.toUpperCase();
+        });
+    }
     refs.timerMode.addEventListener('change', handleTimerModeChange);
     refs.copyRoomBtn.addEventListener('click', copyRoomId);
 
@@ -137,7 +145,34 @@ function updateTimerToggle() {
     refs.timerToggleBtn.classList.toggle('active', state.timerEnabled);
 }
 
-function toggleTimerEnabled() {
+async function apiFetch(path, options = {}) {
+    const url = `${ROOM_API_ROOT}${path}`;
+    const response = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+    });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || response.statusText || 'Server error');
+    }
+    return response.json();
+}
+
+function getRoomSyncPayload() {
+    return {
+        board: gameState.board,
+        currentTurn: gameState.currentTurn,
+        lastMove: gameState.lastMove,
+        moveHistory: gameState.moveHistory,
+        capturedWhite: gameState.capturedWhite,
+        capturedBlack: gameState.capturedBlack,
+        isGameOver: gameState.isGameOver,
+        result: gameState.result,
+        timerMinutes: gameState.timerMinutes
+    };
+}
+
+async function toggleTimerEnabled() {
     state.timerEnabled = !state.timerEnabled;
     updateTimerToggle();
     if (state.timerEnabled && !gameState.isGameOver) {
@@ -313,9 +348,12 @@ function exitMatch() {
     timer.pause();
     stopSyncPoll();
     if (gameState.mode === 'online' && gameState.roomCode) {
-        // Clean up the room from localStorage so the slot is freed
-        localStorage.removeItem(`chess-room-${gameState.roomCode}`);
-        gameState.roomCode  = null;
+        if (gameState.roomOwner) {
+            apiFetch(`/${gameState.roomCode}`, { method: 'DELETE' }).catch(() => {
+                console.warn('Failed to delete remote room state');
+            });
+        }
+        gameState.roomCode = null;
         gameState.roomOwner = false;
     }
     gameState.isGameOver = true;
@@ -589,108 +627,104 @@ function undoMove() {
 
 // ─── Online Room Logic ────────────────────────────────────────────────────────
 
-function createRoom() {
-    // Generate a readable 6-char room code
-    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    gameState.roomCode  = code;
-    gameState.roomOwner = true;
+async function createRoom() {
+    try {
+        const response = await apiFetch('/create', {
+            method: 'POST',
+            body: JSON.stringify(getRoomSyncPayload())
+        });
 
-    // Write initial room state to localStorage so the other device can find it
-    syncRoomState();
+        const code = response.roomId;
+        gameState.roomCode = code;
+        gameState.roomOwner = true;
+        gameState.mode = 'online';
+        gameState.lastSync = response.roomState.timestamp;
 
-    // Update UI
-    showActiveRoom(code);
-    showToast(`Room created: ${code}`, 'success');
-
-    // Start polling so the owner can see the guest joining and moves being made
-    startSyncPoll();
+        showActiveRoom(code);
+        showToast(`Room created: ${code}`, 'success');
+        startSyncPoll();
+    } catch (error) {
+        showToast(`Unable to create room: ${error.message}`, 'danger');
+    }
 }
 
-function joinRoom(code) {
-    if (!code) {
+async function joinRoom(code) {
+    const normalized = code ? code.trim().toUpperCase() : '';
+    if (!normalized) {
         showToast('Enter a room ID to join', 'warning');
         return;
     }
 
-    const key   = `chess-room-${code}`;
-    const entry = localStorage.getItem(key);
+    try {
+        const response = await apiFetch('/join', {
+            method: 'POST',
+            body: JSON.stringify({ roomId: normalized })
+        });
 
-    if (!entry) {
+        const room = response.roomState;
+        gameState.mode = 'online';
+        gameState.roomCode = normalized;
+        gameState.roomOwner = false;
+        gameState.board = room.board;
+        gameState.currentTurn = room.currentTurn;
+        gameState.lastMove = room.lastMove || null;
+        gameState.moveHistory = room.moveHistory || [];
+        gameState.capturedWhite = room.capturedWhite || [];
+        gameState.capturedBlack = room.capturedBlack || [];
+        gameState.timerMinutes = room.timerMinutes || Number(refs.timerMode.value) || 3;
+        gameState.lastSync = room.timestamp;
+        gameState.isGameOver = room.isGameOver;
+        gameState.result = room.result || null;
+        gameState.selectedSquare = null;
+        gameState.legalMoves = [];
+        gameState.historySnapshots = gameState.historySnapshots || [];
+
+        if (state.activeView !== 'game') {
+            refs.activeModeLabel.textContent = 'Online Multiplayer';
+            switchView('game');
+            updateRoomPanelVisibility();
+        }
+
+        showActiveRoom(normalized);
+
+        timer.initialize(gameState.timerMinutes || 3);
+        updateTimerToggle();
+        if (state.timerEnabled) {
+            timer.start(gameState.currentTurn);
+        } else {
+            timer.pause();
+        }
+
+        renderBoard();
+        updateStatusPanel();
+        updateCapturedLists();
+        updateMoveHistory();
+        showToast(`Joined room ${normalized}. You are playing as Black.`, 'success');
+
+        startSyncPoll();
+    } catch (error) {
         showToast('Room not found. Make sure the room ID is correct and the host device has created the room.', 'danger');
-        return;
     }
-
-    // Parse room state from storage
-    const room = JSON.parse(entry);
-
-    // Apply room state WITHOUT calling launchGame (which would reset everything)
-    gameState.mode        = 'online';
-    gameState.roomCode    = code;
-    gameState.roomOwner   = false;
-    gameState.board       = room.board;
-    gameState.currentTurn = room.currentTurn;
-    gameState.lastMove    = room.lastMove  || null;
-    gameState.moveHistory = room.moveHistory   || [];
-    gameState.capturedWhite = room.capturedWhite || [];
-    gameState.capturedBlack = room.capturedBlack || [];
-    gameState.timerMinutes = room.timerMinutes || Number(refs.timerMode.value) || 3;
-    gameState.lastSync    = room.timestamp;
-    gameState.isGameOver  = false;
-    gameState.result      = null;
-    gameState.selectedSquare = null;
-    gameState.legalMoves     = [];
-    gameState.historySnapshots = gameState.historySnapshots || [];
-
-    // Switch to game view if not already there
-    if (state.activeView !== 'game') {
-        refs.activeModeLabel.textContent = 'Online Multiplayer';
-        switchView('game');
-        updateRoomPanelVisibility();
-    }
-
-    // Show active room UI
-    showActiveRoom(code);
-
-    timer.initialize(gameState.timerMinutes || 3);
-    updateTimerToggle();
-    if (state.timerEnabled) {
-        timer.start(gameState.currentTurn);
-    } else {
-        timer.pause();
-    }
-
-    renderBoard();
-    updateStatusPanel();
-    updateCapturedLists();
-    updateMoveHistory();
-    showToast(`Joined room ${code}. You are playing as Black.`, 'success');
-
-    // Poll for opponent's moves
-    startSyncPoll();
 }
 
 /**
  * Write the current game state to localStorage so the other device can read it.
  */
-function syncRoomState() {
+async function syncRoomState() {
     if (gameState.mode !== 'online' || !gameState.roomCode) return;
-    const roomState = {
-        board:         gameState.board,
-        currentTurn:   gameState.currentTurn,
-        lastMove:      gameState.lastMove,
-        moveHistory:   gameState.moveHistory,
-        capturedWhite: gameState.capturedWhite,
-        capturedBlack: gameState.capturedBlack,
-        isGameOver:    gameState.isGameOver,
-        result:        gameState.result,
-        timerMinutes:  gameState.timerMinutes,
-        timestamp:     Date.now()
-    };
-    localStorage.setItem(`chess-room-${gameState.roomCode}`, JSON.stringify(roomState));
+    try {
+        const response = await apiFetch(`/${gameState.roomCode}/update`, {
+            method: 'POST',
+            body: JSON.stringify(getRoomSyncPayload())
+        });
+        gameState.lastSync = response.roomState.timestamp;
+    } catch (error) {
+        console.warn('Room sync failed', error);
+    }
 }
 
 /**
- * Apply a room snapshot from localStorage to live game state and re-render.
+ * Apply a room snapshot from the remote server to live game state and re-render.
  */
 function applyRoomSnapshot(room) {
     if (!room || room.timestamp === gameState.lastSync) return;
@@ -753,16 +787,13 @@ function handleStorageSync(event) {
  */
 function startSyncPoll() {
     stopSyncPoll();
-    syncPollInterval = setInterval(() => {
+    syncPollInterval = setInterval(async () => {
         if (gameState.mode !== 'online' || !gameState.roomCode) return;
-        const key    = `chess-room-${gameState.roomCode}`;
-        const latest = localStorage.getItem(key);
-        if (!latest) return;
         try {
-            const room = JSON.parse(latest);
-            applyRoomSnapshot(room);
+            const response = await apiFetch(`/${gameState.roomCode}`, { method: 'GET' });
+            applyRoomSnapshot(response.roomState);
         } catch (e) {
-            console.warn('Room poll parse error', e);
+            console.warn('Room poll failed', e);
         }
     }, 1500);
 }
