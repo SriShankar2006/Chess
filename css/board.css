@@ -11,6 +11,7 @@
 }
 
 .board-card {
+    position: relative;
     display: grid;
     justify-items: center;
     padding: 18px;
@@ -41,6 +42,47 @@
     background: #e3eefc;
     border: 2px solid rgba(15, 36, 66, 0.92);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+#boardGrid.board-flipped {
+    transform: rotate(180deg);
+}
+
+#boardGrid.board-flipped .piece {
+    transform: rotate(180deg);
+}
+
+.square.king-in-check {
+    box-shadow: inset 0 0 0 6px rgba(239, 68, 68, 0.95);
+    transition: box-shadow 180ms ease;
+    position: relative;
+    z-index: 2;
+}
+
+.square.king-in-check::before {
+    background: rgba(239, 68, 68, 0.28) !important;
+    opacity: 1 !important;
+    transform: scale(1.02) !important;
+}
+
+.square.king-in-check .piece {
+    transform: scale(1.04);
+    z-index: 3;
+}
+
+.board-state-message {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: none;
+    place-items: center;
+    text-align: center;
+    color: #ffffff;
+    font-size: clamp(1rem, 2vw, 1.55rem);
+    font-weight: 700;
+    padding: 18px;
+    background: rgba(8, 13, 28, 0.64);
+    backdrop-filter: blur(6px);
 }
 
 @media (max-width: 720px) {

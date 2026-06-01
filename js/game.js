@@ -286,6 +286,18 @@ export function isKingSafe(color, board) {
     return !isSquareAttacked(kr, kc, color, board);
 }
 
+export function getKingPosition(color, board = gameState.board) {
+    const kingSymbol = color === 'white' ? 'K' : 'k';
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if (board[r][c] === kingSymbol) {
+                return { r, c };
+            }
+        }
+    }
+    return null;
+}
+
 export function getGameStatus(board = gameState.board) {
     const color = gameState.currentTurn;
     const legal = getAllLegalMoves(color, board);
