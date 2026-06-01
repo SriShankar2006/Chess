@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chess-arena-cache-v2';
+const CACHE_NAME = 'chess-arena-cache-v3';
 const ASSETS = [
   '.',
   'index.html',
@@ -16,7 +16,6 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  // Force the new service worker to activate immediately
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
@@ -33,6 +32,13 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.open(CACHE_NAME).then(cache =>
+      fetch(event.request)
+        .then(response => {
+          cache.put(event.request, response.clone());
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    )
   );
 });
